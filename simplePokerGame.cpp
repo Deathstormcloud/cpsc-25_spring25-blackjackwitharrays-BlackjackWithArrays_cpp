@@ -1,106 +1,157 @@
-#include <iostream>
-#include <string>
-#include <cstdlib>
-#include <ctime>
+/* 
+Gongyu Yan
+Alejandro Perez
+Ryan Sowersby
+Name
+*/
+import java.util.Random;
+import java.util.Scanner;
 
-using namespace std;
+public class BlackJack {
 
-const string SUITS[] = {"Hearts", "Diamonds", "Clubs", "Spades"};
-const string RANKS[] = {"2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"};
-int DECK[52];
-int currentCardIndex = 0;
+    private static final String[] SUITS = {"Hearts", "Diamonds", "Clubs", "Spades"};
+    private static final String[] RANKS = {"2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"};
+    private static final int[] DECK = new int[52];
+    private static int currentCardIndex = 0;
+    private static int wins = 0;
+    private static int losses = 0;
+    private static int ties = 0;
+    private static boolean doubled = false; // Gongyu Yan, added the doubling mechanic
 
-void initializeDeck() {
-    for (int i = 0; i < 52; i++) {
-        DECK[i] = i;
-    }
-}
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        boolean playAgain = true;
 
-void shuffleDeck() {
-    srand(time(0));
-    for (int i = 0; i < 52; i++) {
-        int index = rand() % 52;
-        int temp = DECK[i];
-        DECK[i] = DECK[index];
-        DECK[index] = temp;
-    }
-}
+        while (playAgain) {
+            initializeDeck();
+            shuffleDeck();
 
-int dealCard() {
-    return DECK[currentCardIndex++] % 13;
-}
+            int playerTotal = dealInitialPlayerCards();
+            int dealerTotal = dealInitialDealerCards();
 
-int cardValue(int card) {
-    return card < 9 ? card + 2 : 10;
-}
-
-int dealInitialPlayerCards() {
-    int card1 = dealCard();
-    int card2 = dealCard();
-    cout << "Your cards: " << RANKS[card1 % 13] << " of " << SUITS[card1 / 13] << " and " << RANKS[card2 % 13] << " of " << SUITS[card2 / 13] << endl;
-    return cardValue(card1) + cardValue(card2);
-}
-
-int dealInitialDealerCards() {
-    int card1 = dealCard();
-    cout << "Dealer's card: " << RANKS[card1 % 13] << " of " << SUITS[card1 / 13] << endl;
-    return cardValue(card1);
-}
-
-int playerTurn(int playerTotal) {
-    while (true) {
-        cout << "Your total is " << playerTotal << ". Do you want to hit or stand?" << endl;
-        string action;
-        getline(cin, action);
-        if (action == "hit") {
-            int newCard = dealCard();
-            playerTotal += cardValue(newCard);
-            cout << "You drew a " << RANKS[newCard % 13] << " of " << SUITS[newCard / 13] << endl;
+            playerTotal = playerTurn(scanner, playerTotal);
             if (playerTotal > 21) {
-                break;
+                System.out.println("You busted! Dealer wins.");
+                losses++;  // Track loss
+            } else {
+                dealerTotal = dealerTurn(dealerTotal);
+                determineWinner(playerTotal, dealerTotal);
             }
-        } else if (action == "stand") {
-            break;
-        } else {
-            cout << "Invalid action. Please type 'hit' or 'stand'." << endl;
+
+            displayStats();  // Display stats after the game
+
+            // Ask if the player wants to play another round
+            System.out.println("Do you want to play another round? (y/n)"); 
+            String response = scanner.nextLine().toLowerCase();
+            if (!response.equals("y")) {
+                playAgain = false;
+            }
+        }
+
+        System.out.println("Thanks for playing! Final stats:");
+        displayStats();  // Final stats display
+        scanner.close();
+    }
+
+    private static void initializeDeck() {
+        for (int i = 0; i < DECK.length; i++) {
+            DECK[i] = i;
+        }
+        currentCardIndex = 0;  // Reset the current card index for each round
+    }
+
+    private static void shuffleDeck() {
+        Random random = new Random();
+        for (int i = 0; i < DECK.length; i++) {
+            int index = random.nextInt(DECK.length);
+            int temp = DECK[i];
+            DECK[i] = DECK[index];
+            DECK[index] = temp;
         }
     }
-    return playerTotal;
-}
 
-int dealerTurn(int dealerTotal) {
-    while (dealerTotal < 17) {
-        int newCard = dealCard();
-        dealerTotal += cardValue(newCard);
+    private static int dealInitialPlayerCards() {
+        int card1 = dealCard();
+        int card2 = dealCard();
+        System.out.println("Your cards: " + RANKS[card1] + " of " + SUITS[card1 / 13] + " and " + RANKS[card2] + " of " + SUITS[card2 / 13]);
+        return cardValue(card1) + cardValue(card2);
     }
-    cout << "Dealer's total is " << dealerTotal << endl;
-    return dealerTotal;
-}
 
-void determineWinner(int playerTotal, int dealerTotal) {
-    if (dealerTotal > 21 || playerTotal > dealerTotal) {
-        cout << "You win!" << endl;
-    } else if (dealerTotal == playerTotal) {
-        cout << "It's a tie!" << endl;
-    } else {
-        cout << "Dealer wins!" << endl;
+    private static int dealInitialDealerCards() {
+        int card1 = dealCard();
+        System.out.println("Dealer's card: " + RANKS[card1] + " of " + SUITS[card1 / 13]);
+        return cardValue(card1);
     }
-}
 
-int main() {
-    initializeDeck();
-    shuffleDeck();
-  
-    int playerTotal = dealInitialPlayerCards();
-    int dealerTotal = dealInitialDealerCards();
-  
-    playerTotal = playerTurn(playerTotal);
-    if (playerTotal > 21) {
-      cout << "You busted! Dealer wins." << endl;
-      return 0;
+    private static int playerTurn(Scanner scanner, int playerTotal) {
+        while (true) {
+            System.out.println("Your total is " + playerTotal + ". Do you want to hit, stand or double?");
+            String action = scanner.nextLine().toLowerCase();
+            if (action.equals("hit")) {
+                int newCard = dealCard();
+                playerTotal += cardValue(newCard);
+                System.out.println("You drew a " + RANKS[newCard] + " of " + SUITS[newCard / 13]);
+                if (playerTotal > 21) {
+                    break;
+                }
+            } 
+            else if (action.equals("stand")) {
+                break;
+            }
+              else if (action.equals("double")) { // Gongyu Yan, added the doubling mechanic
+                doubled = true;
+                int newCard = dealCard();
+                playerTotal += cardValue(newCard);
+                System.out.println("You drew a " + RANKS[newCard] + " of " + SUITS[newCard / 13]);
+                break;
+            } else {
+                System.out.println("Invalid action. Please type 'hit' or 'stand'.");
+            }
+        }
+        return playerTotal;
     }
-    dealerTotal = dealerTurn(dealerTotal);
-    determineWinner(playerTotal, dealerTotal);
-  
-    return 0;
+
+    private static int dealerTurn(int dealerTotal) {
+        while (dealerTotal < 17) {
+            int newCard = dealCard();
+            dealerTotal += cardValue(newCard);
+        }
+        System.out.println("Dealer's total is " + dealerTotal);
+        return dealerTotal;
+    }
+
+            private static void determineWinner(int playerTotal, int dealerTotal) { // Gongyu Yan, added the doubling mechanic
+                if (dealerTotal > 21 || playerTotal > dealerTotal) {
+                    if (doubled) {
+                        System.out.println("You win doubled!");
+                        wins += 2;  // Award 2 points if doubled
+                    } else {
+                        System.out.println("You win!");
+                        wins++;  // Award 1 point if not doubled
+                    }
+        } else if (dealerTotal == playerTotal) {
+            System.out.println("It's a tie!");
+            ties++;  // Track tie
+        } else {
+            System.out.println("Dealer wins!");
+            losses++;  // Track loss
+        }
+    }
+
+    private static int dealCard() {
+        return DECK[currentCardIndex++] % 13;
+    }
+
+    private static int cardValue(int card) {
+        return card < 9 ? card + 2 : 10;
+    }
+
+    private static void displayStats() { // Alejandro P, Ryan S, added the stats display
+        System.out.println("----------------------------------");
+        System.out.println("Current Stats:");
+        System.out.println("Wins: " + wins);
+        System.out.println("Losses: " + losses);
+        System.out.println("Ties: " + ties);
+        System.out.println("----------------------------------");
+    }
 }
